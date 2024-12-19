@@ -1,0 +1,473 @@
+
+[manifest]
+version = "1.0.0"
+dump_lua = true
+priority = 0
+
+# blueprint compat for end of round econ jokers
+[[patches]]
+[patches.pattern]
+target = "card.lua"
+pattern = '''if self.ability.name == 'Golden Joker' then'''
+position = "before"
+payload = '''
+if self.ability.name == 'Blueprint' or self.ability.name == 'Brainstorm' then
+	local other_joker = nil
+	if self.ability.name == 'Blueprint' then
+		for i = 1, #G.jokers.cards do
+			if G.jokers.cards[i] == self then other_joker = G.jokers.cards[i+1] end
+		end
+	else
+		other_joker = G.jokers.cards[1]
+	end
+	if other_joker and other_joker ~= self then
+		blueprintnum = (blueprintnum and blueprintnum+1) or 1
+		if blueprintnum > #G.jokers.cards then return end
+		local other_joker_dret = other_joker:calculate_dollar_bonus(blueprintnum)
+		if other_joker_dret then
+			return other_joker_dret
+		end
+	end
+end
+'''
+match_indent = true
+
+# prevent infinite recursion
+[[patches]]
+[patches.pattern]
+target = "card.lua"
+pattern = '''function Card:calculate_dollar_bonus()'''
+position = "at"
+payload = '''
+function Card:calculate_dollar_bonus(blueprintnum)
+'''
+match_indent = true
+
+# figure out the blueprint web
+[[patches]]
+[patches.pattern]
+target = "game.lua"
+pattern = '''timer_checkpoint('update', 'update')'''
+position = "before"
+payload = '''
+local function content_equal(one, two)
+    if #one ~= #two then return false end
+    for i = 1, #one do
+        if one[i] ~= two[i] then return false end
+    end
+    return true
+end
+local fixingup = false
+if G.jokers then
+	G.joker_map = G.joker_map or {}
+	if not content_equal(G.jokers.cards, G.joker_map) then fixingup = true end
+	G.joker_map = {}
+	for i = 1, #G.jokers.cards do
+		table.insert(G.joker_map, G.jokers.cards[i])
+	end
+end
+
+if G.jokers and fixingup then
+	
+	for i = 1, #G.jokers.cards do
+		G.jokers.cards[i].dependent = G.jokers.cards[i].dependent or {cards = {}}
+		G.jokers.cards[i].dependent.new_cards = {}
+	end
+	
+	for i = 1, #G.jokers.cards do
+		if not G.jokers.cards[i].debuff then
+			local index = i
+			if G.jokers.cards[i].ability.name == 'Blueprint' then
+				index = i+1
+			elseif G.jokers.cards[i].ability.name == 'Brainstorm' then
+				index = 1
+			end
+			local change = i ~= index and index <= #G.jokers.cards
+			while change == true do
+				-- check indexes until it finds the end, or it finds itself
+				change = false
+				if G.jokers.cards[index].ability.name == 'Blueprint' then
+					index = index+1
+					change = true
+				elseif G.jokers.cards[index].ability.name == 'Brainstorm' then
+					index = 1
+					change = true
+				end
+				if i == index or index > #G.jokers.cards or G.jokers.cards[index].debuff then break end
+			end
+			if i ~= index and index <= #G.jokers.cards and not G.jokers.cards[index].debuff then
+				table.insert(G.jokers.cards[index].dependent.new_cards, i)
+			end
+		end
+	end
+
+	for i = 1, #G.jokers.cards do
+		-- final loop? comparing and making changes
+		if G.jokers.cards[i].dependent then
+			local add = false
+			local diff = #G.jokers.cards[i].dependent.new_cards - #G.jokers.cards[i].dependent.cards
+			if diff > 0 then add = true else add = false end
+			for j = 1, math.abs(diff) do
+				if add then
+					G.jokers.cards[i]:soft_add_to_deck(true, true)
+				else
+					G.jokers.cards[i]:soft_remove_from_deck(true, true)
+				end
+			end
+			G.jokers.cards[i].dependent.cards = G.jokers.cards[i].dependent.new_cards
+		end
+	end
+end
+'''
+match_indent = true
+
+# some remove/add to deck hook somewhere is screwing everything up so you get hardcoded behaviour instead
+# i wish i could just use remove_from_deck but it's not good enough
+[[patches]]
+[patches.pattern]
+target = "card.lua"
+pattern = '''function Card:add_to_deck(from_debuff)'''
+position = "before"
+payload = '''
+function Card:soft_add_to_deck()
+	if self.ability.h_size ~= 0 then
+		G.hand:change_size(self.ability.h_size)
+	end
+        if self.ability.d_size > 0 then
+		G.GAME.round_resets.discards = G.GAME.round_resets.discards + self.ability.d_size
+		ease_discard(self.ability.d_size)
+	end
+	if self.ability.name == 'Credit Card' then
+		G.GAME.bankrupt_at = G.GAME.bankrupt_at - self.ability.extra
+	end
+	--[[ yeah don't do this one
+	if self.ability.name == 'Chicot' and G.GAME.blind and G.GAME.blind.boss and not G.GAME.blind.disabled then
+		G.GAME.blind:disable()
+		play_sound('timpani')
+		card_eval_status_text(self, 'extra', nil, nil, nil, {message = localize('ph_boss_disabled')})
+	end
+	]]
+	if self.ability.name == 'Chaos the Clown' then
+		-- G.GAME.total_freerolls = (G.GAME.total_freerolls and G.GAME.total_freerolls + 1) or 1
+		-- this is done in a subsequent lovely patch for some reason
+		G.GAME.current_round.free_rerolls = G.GAME.current_round.free_rerolls + 1
+		calculate_reroll_cost(true)
+		-- sendDebugMessage(G.GAME.total_freerolls)
+	end
+	if self.ability.name == 'Turtle Bean' then
+		G.hand:change_size(self.ability.extra.h_size)
+	end
+	if self.ability.name == 'Oops! All 6s' then
+		for k, v in pairs(G.GAME.probabilities) do 
+			G.GAME.probabilities[k] = v*2
+		end
+	end
+	if self.ability.name == 'To the Moon' then
+		G.GAME.interest_amount = G.GAME.interest_amount + self.ability.extra
+	end
+	if self.ability.name == 'Astronomer' then 
+		G.E_MANAGER:add_event(Event({func = function()
+			for k, v in pairs(G.I.CARD) do
+				if v.set_cost then v:set_cost() end
+			end
+		return true end }))
+	end
+	if self.ability.name == 'Troubadour' then
+		G.hand:change_size(self.ability.extra.h_size)
+		G.GAME.round_resets.hands = G.GAME.round_resets.hands + self.ability.extra.h_plays
+	end
+	if self.ability.name == 'Stuntman' then
+		G.hand:change_size(-self.ability.extra.h_size)
+	end
+end
+
+function Card:soft_remove_from_deck()
+	local card_draw = 0
+	if self.ability.h_size ~= 0 then
+		G.hand:change_size(-self.ability.h_size)
+	end
+	if self.ability.d_size > 0 then
+		G.GAME.round_resets.discards = G.GAME.round_resets.discards - self.ability.d_size
+		ease_discard(-self.ability.d_size)
+	end
+	if self.ability.name == 'Credit Card' then
+		G.GAME.bankrupt_at = G.GAME.bankrupt_at + self.ability.extra
+	end
+	if self.ability.name == 'Chaos the Clown' then
+		-- G.GAME.total_freerolls = G.GAME.total_freerolls - 1
+		-- this is done in a subsequent lovely patch for some reason
+		G.GAME.current_round.free_rerolls = G.GAME.current_round.free_rerolls - 1
+		calculate_reroll_cost(true)
+		-- sendDebugMessage(G.GAME.total_freerolls)
+	end
+	if self.ability.name == 'Turtle Bean' then
+		G.hand:change_size(-self.ability.extra.h_size)
+	end
+	if self.ability.name == 'Oops! All 6s' then
+		for k, v in pairs(G.GAME.probabilities) do 
+			G.GAME.probabilities[k] = v/2
+		end
+	end
+	if self.ability.name == 'To the Moon' then
+		G.GAME.interest_amount = G.GAME.interest_amount - self.ability.extra
+	end
+	if self.ability.name == 'Astronomer' then 
+		G.E_MANAGER:add_event(Event({func = function()
+			for k, v in pairs(G.I.CARD) do
+				if v.set_cost then v:set_cost() end
+			end
+		return true end }))
+        end
+	if self.ability.name == 'Troubadour' then
+		G.hand:change_size(-self.ability.extra.h_size)
+		G.GAME.round_resets.hands = G.GAME.round_resets.hands - self.ability.extra.h_plays
+	end
+	if self.ability.name == 'Stuntman' then
+		G.hand:change_size(self.ability.extra.h_size)
+	end
+end
+
+'''
+match_indent = true
+
+# again
+[[patches]]
+[patches.pattern]
+target = "card.lua"
+pattern = '''function Card:remove_from_deck(from_debuff)'''
+position = "at"
+payload = '''
+function Card:remove_from_deck(from_debuff, from_bloopy)
+'''
+match_indent = true
+
+# if not from bloopy, properly remove all dependent cards
+[[patches]]
+[patches.pattern]
+target = "card.lua"
+pattern = '''if self.added_to_deck then'''
+position = "after"
+payload = '''
+if self.dependent then	-- how cute
+	for i = 1, #self.dependent.cards do
+		table.remove(self.dependent.cards, 1)
+		self:soft_remove_from_deck()
+	end
+	self.dependent.cards = {}
+end
+'''
+match_indent = true
+
+# better logic here
+[[patches]]
+[patches.pattern]
+target = "cardarea.lua"
+pattern = '''local card_count = math.abs(delta)'''
+position = "at"
+payload = '''
+local card_count = math.max(0, math.min(delta, self.config.card_limit - #G.hand.cards))
+'''
+match_indent = true
+
+# bad
+# yes this causes a vanilla change where rebuying chaos in the same shop no longer gives a free reroll, but this needs to be consistent
+[[patches]]
+[patches.pattern]
+target = "functions/common_events.lua"
+pattern = '''if G.GAME.current_round.free_rerolls < 0 then G.GAME.current_round.free_rerolls = 0 end'''
+position = "at"
+payload = '''
+-- no
+'''
+match_indent = true
+
+# rewriting chaos a little
+[[patches]]
+[patches.pattern]
+target = "functions/state_events.lua"
+pattern = '''G.GAME.current_round.free_rerolls = #chaos'''
+position = "at"
+payload = '''
+G.GAME.current_round.free_rerolls = G.GAME.total_freerolls or 0
+'''
+match_indent = true
+
+# inject
+[[patches]]
+[patches.pattern]
+target = "card.lua"
+pattern = '''G.GAME.current_round.free_rerolls = G.GAME.current_round.free_rerolls + 1'''
+position = "after"
+payload = '''
+G.GAME.total_freerolls = (G.GAME.total_freerolls and G.GAME.total_freerolls + 1) or 1
+'''
+match_indent = true
+
+# now for removal
+[[patches]]
+[patches.pattern]
+target = "card.lua"
+pattern = '''G.GAME.current_round.free_rerolls = G.GAME.current_round.free_rerolls - 1'''
+position = "after"
+payload = '''
+G.GAME.total_freerolls = G.GAME.total_freerolls - 1
+'''
+match_indent = true
+
+# turtle bean hardcode cause it's in an annoying spot
+[[patches]]
+[patches.pattern]
+target = "card.lua"
+pattern = '''if other_joker_ret then'''
+position = "before"
+payload = '''
+if other_joker.ability.name == 'Turtle Bean' and context.end_of_round and (not context.individual) and (not context.repetition) then
+	return {	-- the message doesn't show up for some reason but it works fine
+		G.hand:change_size(- other_joker.ability.extra.h_mod),
+		message = localize{type='variable',key='a_handsize_minus',vars={other_joker.ability.extra.h_mod}},
+		colour = G.C.FILTER
+	}
+end
+'''
+match_indent = true
+
+# ok sure
+[[patches]]
+[patches.pattern]
+target = "functions/common_events.lua"
+pattern = '''mod = math.max(-G.GAME.current_round.discards_left, mod)'''
+position = "at"
+payload = '''
+-- no lol
+'''
+match_indent = true
+
+# oh yeah there's a second one too
+[[patches]]
+[patches.pattern]
+target = "functions/common_events.lua"
+pattern = '''if math.abs(math.max(G.GAME.current_round.discards_left, mod)) == 0 then return end'''
+position = "at"
+payload = '''
+if mod == 0 then return end
+'''
+match_indent = true
+
+# gift card just makes sense, egg is odd but i'll allow it
+[[patches]]
+[patches.pattern]
+target = "card.lua"
+pattern = '''elseif not context.blueprint then'''
+position = "at"
+payload = '''
+elseif self.ability.name == 'Gift Card' or self.ability.name == 'Egg' or not context.blueprint then
+'''
+match_indent = true
+
+# egg patching
+[[patches]]
+[patches.pattern]
+target = "card.lua"
+pattern = '''self.ability.extra_value = self.ability.extra_value + self.ability.extra'''
+position = "at"
+payload = '''
+local ccard = context.blueprint_card or self
+ccard.ability.extra_value = ccard.ability.extra_value + self.ability.extra
+ccard:set_cost()
+'''
+match_indent = true
+
+# it's not very good but why not
+[[patches]]
+[patches.pattern]
+target = "card.lua"
+pattern = '''if self.ability.name == 'Midas Mask' and not context.blueprint then'''
+position = "at"
+payload = '''
+if self.ability.name == 'Midas Mask' then
+'''
+match_indent = true
+
+# this works with copies so now it works with bloopy
+[[patches]]
+[patches.pattern]
+target = "card.lua"
+pattern = '''if self.ability.name == 'Trading Card' and not context.blueprint and'''
+position = "at"
+payload = '''
+if self.ability.name == 'Trading Card' and
+'''
+match_indent = true
+
+# mr bones consumes bloopies before himself
+[[patches]]
+[patches.pattern]
+target = "card.lua"
+pattern = '''G.GAME.chips/G.GAME.blind.chips >= 0.25 then'''
+position = "after"
+payload = '''
+local ccard = (#self.dependent.cards > 0 and G.jokers.cards[pseudorandom_element(self.dependent.cards, pseudoseed('mrbones'))]) or self 
+'''
+match_indent = true
+
+# eaten
+[[patches]]
+[patches.pattern]
+target = "card.lua"
+pattern = '''self:start_dissolve()'''
+position = "at"
+payload = '''
+ccard:start_dissolve()
+'''
+match_indent = true
+
+# save
+[[patches]]
+[patches.pattern]
+target = "card.lua"
+pattern = '''ability = self.ability,'''
+position = "before"
+payload = '''
+dependent = self.dependent,
+'''
+match_indent = true
+
+# load
+[[patches]]
+[patches.pattern]
+target = "card.lua"
+pattern = '''self.ability = cardTable.ability'''
+position = "before"
+payload = '''
+self.dependent = cardTable.dependent
+'''
+match_indent = true
+
+# compat update
+[[patches]]
+[patches.pattern]
+target = "game.lua"
+pattern = '''self.P_CENTER_POOLS = {'''
+position = "before"
+payload = '''
+self.P_CENTERS.j_credit_card.blueprint_compat = true
+self.P_CENTERS.j_chaos.blueprint_compat = true
+self.P_CENTERS.j_delayed_grat.blueprint_compat = true
+self.P_CENTERS.j_egg.blueprint_compat = true
+self.P_CENTERS.j_cloud_9.blueprint_compat = true
+self.P_CENTERS.j_rocket.blueprint_compat = true
+self.P_CENTERS.j_midas_mask.blueprint_compat = true
+self.P_CENTERS.j_gift.blueprint_compat = true
+self.P_CENTERS.j_turtle_bean.blueprint_compat = true
+self.P_CENTERS.j_to_the_moon.blueprint_compat = true
+self.P_CENTERS.j_juggler.blueprint_compat = true
+self.P_CENTERS.j_drunkard.blueprint_compat = true
+self.P_CENTERS.j_golden.blueprint_compat = true
+self.P_CENTERS.j_trading.blueprint_compat = true
+self.P_CENTERS.j_mr_bones.blueprint_compat = true
+self.P_CENTERS.j_troubadour.blueprint_compat = true
+self.P_CENTERS.j_merry_andy.blueprint_compat = true
+self.P_CENTERS.j_oops.blueprint_compat = true
+self.P_CENTERS.j_satellite.blueprint_compat = true
+'''
+match_indent = true
