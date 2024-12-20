@@ -43,6 +43,9 @@ function Card:calculate_dollar_bonus(blueprintnum)
 '''
 match_indent = true
 
+
+
+
 # figure out the blueprint web
 [[patches]]
 [patches.pattern]
@@ -130,12 +133,15 @@ pattern = '''function Card:add_to_deck(from_debuff)'''
 position = "before"
 payload = '''
 function Card:soft_add_to_deck()
-	if self.ability.h_size ~= 0 then
+	if self.ability.h_size ~= 0 and true then
 		G.hand:change_size(self.ability.h_size)
 	end
-        if self.ability.d_size > 0 then
+        if self.ability.d_size > 0 and true then
 		G.GAME.round_resets.discards = G.GAME.round_resets.discards + self.ability.d_size
 		ease_discard(self.ability.d_size)
+	end
+	if self.ability.name == 'Showman' then
+		G.GAME.showman_count = (G.GAME.showman_count and G.GAME.showman_count + 1) or 1
 	end
 	if self.ability.name == 'Credit Card' then
 		G.GAME.bankrupt_at = G.GAME.bankrupt_at - self.ability.extra
@@ -183,12 +189,15 @@ end
 
 function Card:soft_remove_from_deck()
 	local card_draw = 0
-	if self.ability.h_size ~= 0 then
+	if self.ability.h_size ~= 0 and true then
 		G.hand:change_size(-self.ability.h_size)
 	end
-	if self.ability.d_size > 0 then
+	if self.ability.d_size > 0 and true then
 		G.GAME.round_resets.discards = G.GAME.round_resets.discards - self.ability.d_size
 		ease_discard(-self.ability.d_size)
+	end
+	if self.ability.name == 'Showman' then
+		G.GAME.showman_count = G.GAME.showman_count - 1
 	end
 	if self.ability.name == 'Credit Card' then
 		G.GAME.bankrupt_at = G.GAME.bankrupt_at + self.ability.extra
@@ -230,17 +239,6 @@ end
 '''
 match_indent = true
 
-# again
-[[patches]]
-[patches.pattern]
-target = "card.lua"
-pattern = '''function Card:remove_from_deck(from_debuff)'''
-position = "at"
-payload = '''
-function Card:remove_from_deck(from_debuff, from_bloopy)
-'''
-match_indent = true
-
 # if not from bloopy, properly remove all dependent cards
 [[patches]]
 [patches.pattern]
@@ -258,6 +256,9 @@ end
 '''
 match_indent = true
 
+
+
+
 # better logic here
 [[patches]]
 [patches.pattern]
@@ -268,6 +269,9 @@ payload = '''
 local card_count = math.max(0, math.min(delta, self.config.card_limit - #G.hand.cards))
 '''
 match_indent = true
+
+
+
 
 # bad
 # yes this causes a vanilla change where rebuying chaos in the same shop no longer gives a free reroll, but this needs to be consistent
@@ -314,6 +318,9 @@ G.GAME.total_freerolls = G.GAME.total_freerolls - 1
 '''
 match_indent = true
 
+
+
+
 # turtle bean hardcode cause it's in an annoying spot
 [[patches]]
 [patches.pattern]
@@ -330,6 +337,9 @@ if other_joker.ability.name == 'Turtle Bean' and context.end_of_round and (not c
 end
 '''
 match_indent = true
+
+
+
 
 # ok sure
 [[patches]]
@@ -352,6 +362,9 @@ payload = '''
 if mod == 0 then return end
 '''
 match_indent = true
+
+
+
 
 # gift card just makes sense, egg is odd but i'll allow it
 [[patches]]
@@ -377,6 +390,9 @@ ccard:set_cost()
 '''
 match_indent = true
 
+
+
+
 # it's not very good but why not
 [[patches]]
 [patches.pattern]
@@ -388,6 +404,9 @@ if self.ability.name == 'Midas Mask' then
 '''
 match_indent = true
 
+
+
+
 # this works with copies so now it works with bloopy
 [[patches]]
 [patches.pattern]
@@ -398,6 +417,9 @@ payload = '''
 if self.ability.name == 'Trading Card' and
 '''
 match_indent = true
+
+
+
 
 # mr bones consumes bloopies before himself
 [[patches]]
@@ -421,6 +443,136 @@ ccard:start_dissolve()
 '''
 match_indent = true
 
+
+
+
+# chicot
+[[patches]]
+[patches.pattern]
+target = "card.lua"
+pattern = '''if self.ability.name == 'Chicot' and not context.blueprint'''
+position = "at"
+payload = '''
+if self.ability.name == 'Chicot'
+'''
+match_indent = true
+
+# proper message location
+[[patches]]
+[patches.pattern]
+target = "card.lua"
+pattern = '''card_eval_status_text(self, 'extra', nil, nil, nil, {message = localize('ph_boss_disabled')})'''
+position = "at"
+payload = '''
+card_eval_status_text(context.blueprint_card or self, 'extra', nil, nil, nil, {message = localize('ph_boss_disabled')})
+'''
+match_indent = true
+
+
+
+
+# remove sixth sense breaking loop, gives one speccy per copy
+[[patches]]
+[patches.pattern]
+target = "functions/state_events.lua"
+pattern = '''if destroyed then break end'''
+position = "at"
+payload = '''
+
+'''
+match_indent = true
+
+# make sixth sense compatible with blueprint
+[[patches]]
+[patches.pattern]
+target = "card.lua"
+pattern = '''elseif context.destroying_card and not context.blueprint then'''
+position = "at"
+payload = '''
+elseif context.destroying_card then
+'''
+match_indent = true
+
+
+
+
+# invis compat
+[[patches]]
+[patches.pattern]
+target = "card.lua"
+pattern = '''if self.ability.name == 'Invisible Joker' and (self.ability.invis_rounds >= self.ability.extra) and not context.blueprint then'''
+position = "at"
+payload = '''
+if self.ability.name == 'Invisible Joker' and (self.ability.invis_rounds >= self.ability.extra) then
+'''
+match_indent = true
+
+# copy the correct cards
+[[patches]]
+[patches.pattern]
+target = "card.lua"
+pattern = '''if G.jokers.cards[i] ~= self then'''
+position = "at"
+payload = '''
+if G.jokers.cards[i] ~= context.blueprint_card or self then
+'''
+match_indent = true
+
+
+
+
+# showman
+[[patches]]
+[patches.pattern]
+target = "functions/common_events.lua"
+pattern = '''for k, v in ipairs(_starting_pool) do'''
+position = "after"
+payload = '''
+for _i = 1, ((G.GAME.used_jokers[v.key] and G.GAME.showman_count) and G.GAME.showman_count > 1) and G.GAME.showman_count - 1 or 1 do
+'''
+match_indent = true
+
+# end the wrap
+[[patches]]
+[patches.pattern]
+target = "functions/common_events.lua"
+pattern = '''_pool[#_pool + 1] = 'UNAVAILABLE''''
+position = "after"
+payload = '''
+end
+'''
+match_indent = true
+
+# showman add to deck
+[[patches]]
+[patches.pattern]
+target = "card.lua"
+pattern = '''if not self.added_to_deck then'''
+position = "after"
+payload = '''
+if self.ability.name == 'Showman' then
+	G.GAME.showman_count = (G.GAME.showman_count and G.GAME.showman_count + 1) or 1
+end
+'''
+match_indent = true
+
+# showman remove from deck
+[[patches]]
+[patches.pattern]
+target = "card.lua"
+pattern = '''if self.added_to_deck then'''
+position = "after"
+payload = '''
+if self.ability.name == 'Showman' then
+	G.GAME.showman_count = G.GAME.showman_count - 1
+end
+'''
+match_indent = true
+
+
+
+
+
 # save
 [[patches]]
 [patches.pattern]
@@ -443,6 +595,9 @@ self.dependent = cardTable.dependent
 '''
 match_indent = true
 
+
+
+
 # compat update
 [[patches]]
 [patches.pattern]
@@ -454,6 +609,7 @@ self.P_CENTERS.j_credit_card.blueprint_compat = true
 self.P_CENTERS.j_chaos.blueprint_compat = true
 self.P_CENTERS.j_delayed_grat.blueprint_compat = true
 self.P_CENTERS.j_egg.blueprint_compat = true
+self.P_CENTERS.j_sixth_sense.blueprint_compat = true
 self.P_CENTERS.j_cloud_9.blueprint_compat = true
 self.P_CENTERS.j_rocket.blueprint_compat = true
 self.P_CENTERS.j_midas_mask.blueprint_compat = true
@@ -466,8 +622,11 @@ self.P_CENTERS.j_golden.blueprint_compat = true
 self.P_CENTERS.j_trading.blueprint_compat = true
 self.P_CENTERS.j_mr_bones.blueprint_compat = true
 self.P_CENTERS.j_troubadour.blueprint_compat = true
+self.P_CENTERS.j_ring_master.blueprint_compat = true
 self.P_CENTERS.j_merry_andy.blueprint_compat = true
 self.P_CENTERS.j_oops.blueprint_compat = true
+self.P_CENTERS.j_invisible.blueprint_compat = true
 self.P_CENTERS.j_satellite.blueprint_compat = true
+self.P_CENTERS.j_chicot.blueprint_compat = true
 '''
 match_indent = true

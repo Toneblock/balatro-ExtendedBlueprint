@@ -5,6 +5,7 @@ Requires [Lovely](https://github.com/ethangreen-dev/lovely-injector/releases/lat
 
 Adds compatibility for the following jokers:
 - Chaos the Clown
+- Chicot
 - Cloud 9
 - Credit Card
 - Delayed Gratification
@@ -12,6 +13,7 @@ Adds compatibility for the following jokers:
 - Egg
 - Gift Card
 - Golden Joker
+- Invisible Joker
 - Juggler
 - Merry Andy
 - Midas Mask
@@ -19,6 +21,8 @@ Adds compatibility for the following jokers:
 - Oops! All 6s
 - Rocket
 - Satellite
+- Showman
+- Sixth Sense
 - To the Moon
 - Trading Card
 - Troubadour
