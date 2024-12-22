@@ -11,6 +11,7 @@ Adds compatibility for the following jokers:
 - Delayed Gratification
 - Drunkard
 - Egg
+- Four Fingers
 - Gift Card
 - Golden Joker
 - Invisible Joker
@@ -21,6 +22,7 @@ Adds compatibility for the following jokers:
 - Oops! All 6s
 - Rocket
 - Satellite
+- Shortcut
 - Showman
 - Sixth Sense
 - To the Moon

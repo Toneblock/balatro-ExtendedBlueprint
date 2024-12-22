@@ -143,6 +143,14 @@ function Card:soft_add_to_deck()
 	if self.ability.name == 'Showman' then
 		G.GAME.showman_count = (G.GAME.showman_count and G.GAME.showman_count + 1) or 1
 	end
+	if self.ability.name == 'Four Fingers' then
+		G.GAME.exb_fingers = (G.GAME.exb_fingers and G.GAME.exb_fingers + 1) or 1
+		exb_parse()
+	end
+	if self.ability.name == 'Shortcut' then
+		G.GAME.exb_shortcuts = (G.GAME.exb_shortcuts and G.GAME.exb_shortcuts + 1) or 1
+		exb_parse()
+	end
 	if self.ability.name == 'Credit Card' then
 		G.GAME.bankrupt_at = G.GAME.bankrupt_at - self.ability.extra
 	end
@@ -198,6 +206,14 @@ function Card:soft_remove_from_deck()
 	end
 	if self.ability.name == 'Showman' then
 		G.GAME.showman_count = G.GAME.showman_count - 1
+	end
+	if self.ability.name == 'Four Fingers' then
+		G.GAME.exb_fingers = G.GAME.exb_fingers - 1
+		exb_parse()
+	end
+	if self.ability.name == 'Shortcut' then
+		G.GAME.exb_shortcuts = G.GAME.exb_shortcuts - 1
+		exb_parse()
 	end
 	if self.ability.name == 'Credit Card' then
 		G.GAME.bankrupt_at = G.GAME.bankrupt_at + self.ability.extra
@@ -543,7 +559,10 @@ end
 '''
 match_indent = true
 
-# showman add to deck
+
+
+
+# add to deck
 [[patches]]
 [patches.pattern]
 target = "card.lua"
@@ -553,10 +572,18 @@ payload = '''
 if self.ability.name == 'Showman' then
 	G.GAME.showman_count = (G.GAME.showman_count and G.GAME.showman_count + 1) or 1
 end
+if self.ability.name == 'Four Fingers' then
+	G.GAME.exb_fingers = (G.GAME.exb_fingers and G.GAME.exb_fingers + 1) or 1
+	exb_parse()
+end
+if self.ability.name == 'Shortcut' then
+	G.GAME.exb_shortcuts = (G.GAME.exb_shortcuts and G.GAME.exb_shortcuts + 1) or 1
+	exb_parse()
+end
 '''
 match_indent = true
 
-# showman remove from deck
+# remove from deck
 [[patches]]
 [patches.pattern]
 target = "card.lua"
@@ -565,6 +592,14 @@ position = "after"
 payload = '''
 if self.ability.name == 'Showman' then
 	G.GAME.showman_count = G.GAME.showman_count - 1
+end
+if self.ability.name == 'Four Fingers' then
+	G.GAME.exb_fingers = G.GAME.exb_fingers - 1
+	exb_parse()
+end
+if self.ability.name == 'Shortcut' then
+	G.GAME.exb_shortcuts = G.GAME.exb_shortcuts - 1
+	exb_parse()
 end
 '''
 match_indent = true
@@ -605,28 +640,9 @@ target = "game.lua"
 pattern = '''self.P_CENTER_POOLS = {'''
 position = "before"
 payload = '''
-self.P_CENTERS.j_credit_card.blueprint_compat = true
-self.P_CENTERS.j_chaos.blueprint_compat = true
-self.P_CENTERS.j_delayed_grat.blueprint_compat = true
-self.P_CENTERS.j_egg.blueprint_compat = true
-self.P_CENTERS.j_sixth_sense.blueprint_compat = true
-self.P_CENTERS.j_cloud_9.blueprint_compat = true
-self.P_CENTERS.j_rocket.blueprint_compat = true
-self.P_CENTERS.j_midas_mask.blueprint_compat = true
-self.P_CENTERS.j_gift.blueprint_compat = true
-self.P_CENTERS.j_turtle_bean.blueprint_compat = true
-self.P_CENTERS.j_to_the_moon.blueprint_compat = true
-self.P_CENTERS.j_juggler.blueprint_compat = true
-self.P_CENTERS.j_drunkard.blueprint_compat = true
-self.P_CENTERS.j_golden.blueprint_compat = true
-self.P_CENTERS.j_trading.blueprint_compat = true
-self.P_CENTERS.j_mr_bones.blueprint_compat = true
-self.P_CENTERS.j_troubadour.blueprint_compat = true
-self.P_CENTERS.j_ring_master.blueprint_compat = true
-self.P_CENTERS.j_merry_andy.blueprint_compat = true
-self.P_CENTERS.j_oops.blueprint_compat = true
-self.P_CENTERS.j_invisible.blueprint_compat = true
-self.P_CENTERS.j_satellite.blueprint_compat = true
-self.P_CENTERS.j_chicot.blueprint_compat = true
+local exb_overrides = {'j_four_fingers', 'j_credit_card', 'j_chaos', 'j_delayed_grat', 'j_egg', 'j_sixth_sense', 'j_shortcut', 'j_cloud_9', 'j_rocket', 'j_midas_mask', 'j_gift', 'j_turtle_bean', 'j_to_the_moon', 'j_juggler', 'j_drunkard', 'j_golden', 'j_trading', 'j_mr_bones', 'j_troubadour', 'j_ring_master', 'j_merry_andy', 'j_oops', 'j_invisible', 'j_satellite', 'j_chicot'}
+for i = 1, #exb_overrides do
+	self.P_CENTERS[exb_overrides[i]].blueprint_compat = true
+end
 '''
 match_indent = true
