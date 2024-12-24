@@ -527,7 +527,7 @@ target = "functions/common_events.lua"
 pattern = '''for k, v in ipairs(_starting_pool) do'''
 position = "after"
 payload = '''
-for _i = 1, ((G.GAME.used_jokers[v.key] and G.GAME.exb["Showman"]) and G.GAME.exb["Showman"] > 1) and G.GAME.exb["Showman"] - 1 or 1 do
+for _i = 1, (((G.GAME.used_jokers[v.key] and G.GAME.exb) and G.GAME.exb["Showman"]) and G.GAME.exb["Showman"] > 1) and G.GAME.exb["Showman"] - 1 or 1 do
 '''
 match_indent = true
 
