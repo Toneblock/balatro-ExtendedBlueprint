@@ -4,6 +4,7 @@ Increases vanilla blueprint compatibility
 Requires [Lovely](https://github.com/ethangreen-dev/lovely-injector/releases/latest)
 
 Adds compatibility for the following jokers:
+- Astronomer
 - Chaos the Clown
 - Chicot
 - Cloud 9
@@ -25,6 +26,8 @@ Adds compatibility for the following jokers:
 - Shortcut
 - Showman
 - Sixth Sense
+- Smeared Joker
+- Splash
 - To the Moon
 - Trading Card
 - Troubadour
