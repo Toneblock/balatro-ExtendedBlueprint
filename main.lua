@@ -31,7 +31,7 @@ end
 -- me when i copy the entire functions just to edit a couple lines
 function exb_get_flush(hand)
 	local ret = {}
-	local four_fingers = math.min(4, (G.GAME and G.GAME.exb) and G.GAME.exb["Four Fingers"] or 0)
+	local four_fingers = math.min(4, exb_amt("Four Fingers") or 0)
 	local suits = SMODS.Suit.obj_buffer
 	if #hand < (5 - (four_fingers)) then return ret else
 		for j = 1, #suits do
@@ -52,8 +52,8 @@ end
 
 function exb_get_straight(hand)
 	local ret = {}
-	local four_fingers = math.min(4, (G.GAME and G.GAME.exb) and G.GAME.exb["Four Fingers"] or 0)
-	local can_skip = math.min(4, (G.GAME and G.GAME.exb) and G.GAME.exb["Shortcut"] or 0)
+	local four_fingers = math.min(4, exb_amt("Four Fingers") or 0)
+	local can_skip = math.min(4, exb_amt("Shortcut") or 0)
 	if #hand < (5 - (four_fingers)) then return ret end
 	local t = {}
 	local RANKS = {}
@@ -133,18 +133,50 @@ local setcostref = Card.set_cost
 function Card:set_cost()
 	setcostref(self)
 	local _planet = self.ability.set == 'Planet' or (self.ability.set == 'Booster' and self.ability.name:find('Celestial'))
-	if _planet and G.GAME.exb and G.GAME.exb["Astronomer"] and G.GAME.exb["Astronomer"] > 0 then
-		self.cost = 0 - (G.GAME.exb["Astronomer"] - 1)
+	if _planet and exb_amt("Astronomer", 1) then
+		self.cost = 0 - (exb_amt("Astronomer") - 1)
 	end
 end
 -- smeared copy
 local issuitref = Card.is_suit
 function Card:is_suit(suit, bypass_debuff, flush_calc)
 	local ret = issuitref(self, suit, bypass_debuff, flush_calc)
-	if G.GAME.exb and G.GAME.exb["Smeared Joker"] and G.GAME.exb["Smeared Joker"] >= 2 then
+	if exb_amt("Smeared Joker", 2) then
             return true
         end
 	return ret
+end
+
+-- i like coding because you can put your spaghetti in a function and suddenly it's clean code
+function exb_amt(_name, amt)
+	if amt and (G.GAME.exb and G.GAME.exb[_name]) and G.GAME.exb[_name] >= amt then return true end
+	if not amt and (G.GAME.exb and G.GAME.exb[_name]) then return G.GAME.exb[_name] end
+end
+
+function exb_truefacecheck(_card)
+	local id = _card:get_id()
+	local rank = SMODS.Ranks[_card.base.value]
+	if exb_amt("Pareidolia", 2) and (id > 0 and rank and rank.face) then return true end
+end
+
+function exb_pareiupd()
+	if G.GAME and G.GAME.blind then
+		for _, v in ipairs(G.playing_cards) do
+			if exb_truefacecheck(v) then	-- idk if the card update inject covers this but just to be safe
+				v:set_debuff(false)
+				v.ability.wheel_flipped = false
+				if v.area == G.hand and v.facing == 'back' then
+                			v:flip()
+				end
+			else
+				G.GAME.blind:debuff_card(v)
+				if v.area == G.hand and v.facing == 'front' and G.GAME.blind:stay_flipped(G.hand, v) then
+					v:flip()
+					v.ability.wheel_flipped = true
+				end
+			end
+    		end
+	end
 end
 
 

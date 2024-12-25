@@ -143,6 +143,9 @@ function Card:soft_add_to_deck()
 	G.GAME.exb = G.GAME.exb or {}
 	G.GAME.exb[self.ability.name] = (G.GAME.exb[self.ability.name] and G.GAME.exb[self.ability.name] + 1) or 1
 	exb_parse()
+	if self.ability.name == "Pareidolia" then
+		exb_pareiupd()
+	end
 	if self.ability.name == 'Credit Card' then
 		G.GAME.bankrupt_at = G.GAME.bankrupt_at - self.ability.extra
 	end
@@ -198,6 +201,9 @@ function Card:soft_remove_from_deck()
 	end
 	G.GAME.exb[self.ability.name] = G.GAME.exb[self.ability.name] - 1
 	exb_parse()
+	if self.ability.name == "Pareidolia" then
+		exb_pareiupd()
+	end
 	if self.ability.name == 'Credit Card' then
 		G.GAME.bankrupt_at = G.GAME.bankrupt_at + self.ability.extra
 	end
@@ -477,7 +483,29 @@ target = "functions/state_events.lua"
 pattern = '''if destroyed then break end'''
 position = "at"
 payload = '''
+if destroyed then _destroyed = true end
+'''
+match_indent = true
 
+# this is scuffed
+[[patches]]
+[patches.pattern]
+target = "functions/state_events.lua"
+pattern = '''local destroyed = nil'''
+position = "after"
+payload = '''
+local _destroyed = nil
+'''
+match_indent = true
+
+# juggling practice
+[[patches]]
+[patches.pattern]
+target = "functions/state_events.lua"
+pattern = '''if scoring_hand[i].ability.name == 'Glass Card' and not scoring_hand[i].debuff and pseudorandom('glass') < G.GAME.probabilities.normal/scoring_hand[i].ability.extra then'''
+position = "before"
+payload = '''
+if _destroyed then destroyed = true end
 '''
 match_indent = true
 
@@ -527,7 +555,7 @@ target = "functions/common_events.lua"
 pattern = '''for k, v in ipairs(_starting_pool) do'''
 position = "after"
 payload = '''
-for _i = 1, (((G.GAME.used_jokers[v.key] and G.GAME.exb) and G.GAME.exb["Showman"]) and G.GAME.exb["Showman"] > 1) and G.GAME.exb["Showman"] - 1 or 1 do
+for _i = 1, G.GAME.used_jokers[v.key] and exb_amt("Showman", 2) and exb_amt("Showman") - 1 or 1 do
 '''
 match_indent = true
 
@@ -645,6 +673,29 @@ match_indent = true
 
 
 
+
+# pareidolia stacking, this is dumb
+[[patches]]
+[patches.pattern]
+target = "card.lua"
+pattern = '''if self.ability and self.ability.perma_debuff then self.debuff = true end'''
+position = "before"
+payload = '''
+if self.base and self.base.id and not (self.ability and self.ability.perma_debuff) then
+	if exb_truefacecheck(self) then
+		self:set_debuff(false) 
+		self.ability.wheel_flipped = false
+		if self.area == G.hand and self.facing == 'back' then
+                	self:flip()
+		end
+	end
+end
+'''
+match_indent = true
+
+
+
+
 # add to deck
 [[patches]]
 [patches.pattern]
@@ -655,6 +706,9 @@ payload = '''
 G.GAME.exb = G.GAME.exb or {}
 G.GAME.exb[self.ability.name] = (G.GAME.exb[self.ability.name] and G.GAME.exb[self.ability.name] + 1) or 1
 exb_parse()
+if self.ability.name == "Pareidolia" then
+	exb_pareiupd()
+end
 '''
 match_indent = true
 
@@ -667,9 +721,11 @@ position = "after"
 payload = '''
 G.GAME.exb[self.ability.name] = G.GAME.exb[self.ability.name] - 1
 exb_parse()
+if self.ability.name == "Pareidolia" then
+	exb_pareiupd()
+end
 '''
 match_indent = true
-
 
 
 
@@ -706,7 +762,7 @@ target = "game.lua"
 pattern = '''self.P_CENTER_POOLS = {'''
 position = "before"
 payload = '''
-local exb_overrides = {'j_four_fingers', 'j_credit_card', 'j_chaos', 'j_delayed_grat', 'j_egg', 'j_splash', 'j_sixth_sense', 'j_shortcut', 'j_cloud_9', 'j_rocket', 'j_midas_mask', 'j_gift', 'j_turtle_bean', 'j_to_the_moon', 'j_juggler', 'j_drunkard', 'j_golden', 'j_trading', 'j_mr_bones', 'j_troubadour', 'j_smeared', 'j_ring_master', 'j_merry_andy', 'j_oops', 'j_invisible', 'j_satellite', 'j_astronomer', 'j_chicot'}
+local exb_overrides = {'j_four_fingers', 'j_credit_card', 'j_chaos', 'j_delayed_grat', 'j_pareidolia', 'j_egg', 'j_splash', 'j_sixth_sense', 'j_shortcut', 'j_cloud_9', 'j_rocket', 'j_midas_mask', 'j_gift', 'j_turtle_bean', 'j_to_the_moon', 'j_juggler', 'j_drunkard', 'j_golden', 'j_trading', 'j_mr_bones', 'j_troubadour', 'j_smeared', 'j_ring_master', 'j_merry_andy', 'j_oops', 'j_invisible', 'j_satellite', 'j_astronomer', 'j_chicot'}
 for i = 1, #exb_overrides do
 	self.P_CENTERS[exb_overrides[i]].blueprint_compat = true
 end

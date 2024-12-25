@@ -21,6 +21,7 @@ Adds compatibility for the following jokers:
 - Midas Mask
 - Mr. Bones
 - Oops! All 6s
+- Pareidolia
 - Rocket
 - Satellite
 - Shortcut
