@@ -3,6 +3,8 @@ Increases vanilla blueprint compatibility
 
 Requires [Lovely](https://github.com/ethangreen-dev/lovely-injector/releases/latest)
 
+Included is a config option to lock joker positions when hand is played. This disables the ability to shuffle jokers around during the winning hand to gain multiple benefits at once.
+
 Adds compatibility for the following jokers:
 - Astronomer
 - Chaos the Clown

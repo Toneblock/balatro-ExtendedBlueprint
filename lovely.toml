@@ -182,6 +182,7 @@ function Card:soft_add_to_deck()
 		return true end }))
 	end
 	if self.ability.name == 'Troubadour' then
+		ease_hands_played(self.ability.extra.h_plays)
 		G.hand:change_size(self.ability.extra.h_size)
 		G.GAME.round_resets.hands = G.GAME.round_resets.hands + self.ability.extra.h_plays
 	end
@@ -233,6 +234,7 @@ function Card:soft_remove_from_deck()
 		return true end }))
         end
 	if self.ability.name == 'Troubadour' then
+		ease_hands_played(-self.ability.extra.h_plays)
 		G.hand:change_size(-self.ability.extra.h_size)
 		G.GAME.round_resets.hands = G.GAME.round_resets.hands - self.ability.extra.h_plays
 	end
@@ -696,6 +698,30 @@ match_indent = true
 
 
 
+# joker lock
+[[patches]]
+[patches.pattern]
+target = "cardarea.lua"
+pattern = '''table.sort(self.cards, function (a, b) return a.T.x + a.T.w/2 - 100*((a.pinned and not a.ignore_pinned) and a.sort_id or 0) < b.T.x + b.T.w/2 - 100*((b.pinned and not b.ignore_pinned) and b.sort_id or 0) end)'''
+position = "before"
+payload = '''
+if not exb_jokerlock() then
+'''
+match_indent = true
+
+# end
+[[patches]]
+[patches.pattern]
+target = "cardarea.lua"
+pattern = '''table.sort(self.cards, function (a, b) return a.T.x + a.T.w/2 - 100*((a.pinned and not a.ignore_pinned) and a.sort_id or 0) < b.T.x + b.T.w/2 - 100*((b.pinned and not b.ignore_pinned) and b.sort_id or 0) end)'''
+position = "after"
+payload = '''
+end
+'''
+match_indent = true
+
+
+
 # add to deck
 [[patches]]
 [patches.pattern]
@@ -708,6 +734,9 @@ G.GAME.exb[self.ability.name] = (G.GAME.exb[self.ability.name] and G.GAME.exb[se
 exb_parse()
 if self.ability.name == "Pareidolia" then
 	exb_pareiupd()
+end
+if self.ability.name == 'Troubadour' then
+	ease_hands_played(self.ability.extra.h_plays)
 end
 '''
 match_indent = true
@@ -723,6 +752,9 @@ G.GAME.exb[self.ability.name] = G.GAME.exb[self.ability.name] - 1
 exb_parse()
 if self.ability.name == "Pareidolia" then
 	exb_pareiupd()
+end
+if self.ability.name == 'Troubadour' then
+	ease_hands_played(-self.ability.extra.h_plays)
 end
 '''
 match_indent = true

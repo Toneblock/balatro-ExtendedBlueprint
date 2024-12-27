@@ -6,10 +6,12 @@
 --- MOD_DESCRIPTION: Increases blueprint compatibility
 --- BADGE_COLOUR: 4b68ce
 --- DEPENDENCIES: [Steamodded>=1.0.0~ALPHA-1216c]
---- VERSION: 0.2.0
+--- VERSION: 0.3.0
 
 ----------------------------------------------
 ------------MOD CODE -------------------------
+
+local exb = SMODS.current_mod
 
 -- gotta go for smods to do four fingers/shortcut stuff
 
@@ -179,6 +181,32 @@ function exb_pareiupd()
 	end
 end
 
+function exb_jokerlock()
+	return exb.config.lock and (G.GAME and G.GAME.STOP_USE and G.GAME.STOP_USE > 0 and (G.STATE == G.STATES.HAND_PLAYED or G.STATE == G.STATES.NEW_ROUND or G.STATE == G.STATES.ROUND_EVAL))
+end
+
+
+
+
+
+
+
+
+
+
+-- config time!
+-- tysm larswijn (https://discord.com/channels/1116389027176787968/1233186615086813277/1298441528712101940)
+
+exb.config_tab = function()
+  return {n=G.UIT.ROOT, config = {align = "cm", padding = 0.05, r = 0.1, colour = G.C.BLACK}, nodes = {
+    create_toggle{ 
+      label = "Lock joker positions on hand played", 
+      w = 0,
+      ref_table = exb.config, 
+      ref_value = "lock" 
+    }
+  }}
+end
 
 SMODS.Atlas({
     key = "modicon",
