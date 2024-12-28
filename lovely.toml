@@ -96,7 +96,11 @@ if G.jokers and fixingup then
 					index = 1
 					change = true
 				end
-				if i == index or index > #G.jokers.cards or G.jokers.cards[index].debuff then break end
+				if (i == index) or (index > #G.jokers.cards) 
+				or (G.jokers.cards[index].debuff) 
+				or (index == 1 and G.jokers.cards[1].ability.name == 'Brainstorm') then 
+					break 
+				end
 			end
 			if i ~= index and index <= #G.jokers.cards and not G.jokers.cards[index].debuff then
 				table.insert(G.jokers.cards[index].dependent.new_cards, i)
@@ -112,9 +116,9 @@ if G.jokers and fixingup then
 			if diff > 0 then add = true else add = false end
 			for j = 1, math.abs(diff) do
 				if add then
-					G.jokers.cards[i]:soft_add_to_deck(true, true)
+					G.jokers.cards[i]:soft_add_to_deck()
 				else
-					G.jokers.cards[i]:soft_remove_from_deck(true, true)
+					G.jokers.cards[i]:soft_remove_from_deck()
 				end
 			end
 			G.jokers.cards[i].dependent.cards = G.jokers.cards[i].dependent.new_cards
