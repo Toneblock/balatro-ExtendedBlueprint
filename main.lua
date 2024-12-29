@@ -156,7 +156,7 @@ function exb_amt(_name, amt)
 end
 
 function exb_truefacecheck(_card)
-	local id = _card:get_id()
+	local id = 1 -- _card:get_id()
 	local rank = SMODS.Ranks[_card.base.value]
 	if exb_amt("Pareidolia", 2) and (id > 0 and rank and rank.face) then return true end
 end
