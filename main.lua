@@ -6,7 +6,7 @@
 --- MOD_DESCRIPTION: Increases blueprint compatibility
 --- BADGE_COLOUR: 4b68ce
 --- DEPENDENCIES: [Steamodded>=1.0.0~ALPHA-1216c]
---- VERSION: 0.3.0
+--- VERSION: 0.3.1
 
 ----------------------------------------------
 ------------MOD CODE -------------------------
