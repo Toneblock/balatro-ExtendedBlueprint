@@ -204,7 +204,7 @@ function Card:soft_remove_from_deck()
 		G.GAME.round_resets.discards = G.GAME.round_resets.discards - self.ability.d_size
 		ease_discard(-self.ability.d_size)
 	end
-	G.GAME.exb[self.ability.name] = G.GAME.exb[self.ability.name] - 1
+	G.GAME.exb[self.ability.name] = (G.GAME.exb[self.ability.name] and G.GAME.exb[self.ability.name] - 1) or 0
 	exb_parse()
 	if self.ability.name == "Pareidolia" then
 		exb_pareiupd()
@@ -752,7 +752,7 @@ target = "card.lua"
 pattern = '''if self.added_to_deck then'''
 position = "after"
 payload = '''
-G.GAME.exb[self.ability.name] = G.GAME.exb[self.ability.name] - 1
+G.GAME.exb[self.ability.name] = (G.GAME.exb[self.ability.name] and G.GAME.exb[self.ability.name] - 1) or 0
 exb_parse()
 if self.ability.name == "Pareidolia" then
 	exb_pareiupd()
