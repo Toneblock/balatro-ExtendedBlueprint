@@ -508,7 +508,7 @@ match_indent = true
 [[patches]]
 [patches.pattern]
 target = "functions/state_events.lua"
-pattern = '''if scoring_hand[i].ability.name == 'Glass Card' and not scoring_hand[i].debuff and pseudorandom('glass') < G.GAME.probabilities.normal/scoring_hand[i].ability.extra then'''
+pattern = '''if scoring_hand[i].will_shatter then destroyed = true end'''
 position = "before"
 payload = '''
 if _destroyed then destroyed = true end
