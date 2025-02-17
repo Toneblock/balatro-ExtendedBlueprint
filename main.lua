@@ -6,7 +6,7 @@
 --- MOD_DESCRIPTION: Increases blueprint compatibility
 --- BADGE_COLOUR: 4b68ce
 --- DEPENDENCIES: [Steamodded>=1.0.0~ALPHA-1216c]
---- VERSION: 0.3.1
+--- VERSION: 0.3.2
 
 ----------------------------------------------
 ------------MOD CODE -------------------------
@@ -185,7 +185,47 @@ function exb_jokerlock()
 	return exb.config.lock and (G.GAME and G.GAME.STOP_USE and G.GAME.STOP_USE > 0 and (G.STATE == G.STATES.HAND_PLAYED or G.STATE == G.STATES.NEW_ROUND or G.STATE == G.STATES.ROUND_EVAL))
 end
 
-
+SMODS.Joker:take_ownership('j_splash', {
+	no_mod_badges = true,
+	calculate = function(self, card, context)
+		if context.repetition and context.full_hand and context.full_hand[1] then
+			local poker_hands = evaluate_poker_hand(context.full_hand)
+			local top = nil
+			for _, v in ipairs(G.handlist) do
+				if next(poker_hands[v]) then
+					text = v
+					top = poker_hands[v][1]
+					break
+				end
+			end
+			local inside = false
+			for i = 1, #top do
+				
+				if context.other_card == top[i] then inside = true end
+			end
+			local initial = false
+			if not context.blueprint then
+				-- check if self is the leftmost splash. the leftmost splash will be used to score the cards originally
+				-- don't do this for bloopies
+				for i = 1, #G.jokers.cards do
+					if G.jokers.cards[i].ability.name == 'Splash' and G.jokers.cards[i] ~= card then
+						break
+					elseif G.jokers.cards[i] == card then
+						initial = true
+						break
+					end
+				end
+			end
+			if (not initial) and (not inside) then
+				return {
+					message = localize('k_again_ex'),
+					repetitions = 1,
+					card = card
+				}
+			end
+		end
+	end
+})
 
 
 

@@ -43,6 +43,18 @@ function Card:calculate_dollar_bonus(blueprintnum)
 '''
 match_indent = true
 
+# be careful!
+[[patches]]
+[patches.pattern]
+target = "card.lua"
+pattern = '''if other_joker_ret then'''
+position = "before"
+payload = '''
+if other_joker_ret and other_joker_ret == true then
+	return other_joker_ret
+end
+'''
+match_indent = true
 
 
 
@@ -150,7 +162,7 @@ function Card:soft_add_to_deck()
 	if self.ability.name == "Pareidolia" then
 		exb_pareiupd()
 	end
-	if self.ability.name == 'Credit Card' then
+	if self.ability.name == 'Credit Card' and true then
 		G.GAME.bankrupt_at = G.GAME.bankrupt_at - self.ability.extra
 	end
 	--[[ yeah don't do this one
@@ -209,7 +221,7 @@ function Card:soft_remove_from_deck()
 	if self.ability.name == "Pareidolia" then
 		exb_pareiupd()
 	end
-	if self.ability.name == 'Credit Card' then
+	if self.ability.name == 'Credit Card' and true then
 		G.GAME.bankrupt_at = G.GAME.bankrupt_at + self.ability.extra
 	end
 	if self.ability.name == 'Chaos the Clown' then
@@ -482,40 +494,7 @@ match_indent = true
 
 
 
-# remove sixth sense breaking loop, gives one speccy per copy
-[[patches]]
-[patches.pattern]
-target = "functions/state_events.lua"
-pattern = '''if destroyed then break end'''
-position = "at"
-payload = '''
-if destroyed then _destroyed = true end
-'''
-match_indent = true
-
-# this is scuffed
-[[patches]]
-[patches.pattern]
-target = "functions/state_events.lua"
-pattern = '''local destroyed = nil'''
-position = "after"
-payload = '''
-local _destroyed = nil
-'''
-match_indent = true
-
-# juggling practice
-[[patches]]
-[patches.pattern]
-target = "functions/state_events.lua"
-pattern = '''if scoring_hand[i].will_shatter then destroyed = true end'''
-position = "before"
-payload = '''
-if _destroyed then destroyed = true end
-'''
-match_indent = true
-
-# make sixth sense compatible with blueprint
+# sixth sense
 [[patches]]
 [patches.pattern]
 target = "card.lua"
@@ -523,6 +502,30 @@ pattern = '''elseif context.destroying_card and not context.blueprint then'''
 position = "at"
 payload = '''
 elseif context.destroying_card then
+'''
+match_indent = true
+
+# don't break loop
+[[patches]]
+[patches.pattern]
+target = '''=[SMODS _ "src/utils.lua"]'''
+pattern = '''
+if should_break then break end'''
+position = "at"
+payload = '''
+'''
+match_indent = true
+
+# again
+[[patches]]
+[patches.pattern]
+target = '''=[SMODS _ "src/utils.lua"]'''
+pattern = '''
+should_break = true
+break'''
+position = "at"
+payload = '''
+should_break = true
 '''
 match_indent = true
 
@@ -591,88 +594,6 @@ if self.cost < 0 then
 		self:juice_up()
 	return true end }))
 	ease_dollars(-self.cost)
-end
-'''
-match_indent = true
-
-
-
-
-# splash might get messy
-# we switch the generic "score all" into the same mechanism as stone cards
-# while the original is fast, it's not flexible. this allows us to easily find cards that aren't part of the poker hand
-[[patches]]
-[patches.pattern]
-target = "functions/state_events.lua"
-pattern = '''scoring_hand[i] = G.play.cards[i]'''
-position = "at"
-payload = '''
-local inside = false
-for j=1, #scoring_hand do
-	if scoring_hand[j] == G.play.cards[i] then
-		inside = true
-	end
-end
-if not inside then table.insert(pures, G.play.cards[i]) end
-'''
-match_indent = true
-
-# define a local function to check if it's in pures
-[[patches]]
-[patches.pattern]
-target = "functions/state_events.lua"
-pattern = '''local percent_delta = 0.08'''
-position = "after"
-payload = '''
-local function exb_check_unscoring(_ccard, _ppures)
-	local inside = false
-	for i = 1, #_ppures do
-		if _ccard == _ppures[i] then inside = true end
-	end
-	return inside
-end
-'''
-match_indent = true
-
-# terrifying overwrite
-[[patches]]
-[patches.pattern]
-target = "functions/state_events.lua"
-pattern = '''local eval = eval_card(G.jokers.cards[j], {cardarea = G.play, full_hand = G.play.cards, scoring_hand = scoring_hand, scoring_name = text, poker_hands = poker_hands, other_card = scoring_hand[i], repetition = true, callback = function(card, ret) eval = {jokers = ret}'''
-position = "at"
-payload = '''
-local eval = eval_card(G.jokers.cards[j], {cardarea = G.play, full_hand = G.play.cards, scoring_hand = scoring_hand, scoring_name = text, poker_hands = poker_hands, other_card = scoring_hand[i], orig_unscoring = exb_check_unscoring(scoring_hand[i], pures), repetition = true, callback = function(card, ret) eval = {jokers = ret}
-'''
-match_indent = true
-
-# splash calculate, it sucks a little bit but it should be fine
-[[patches]]
-[patches.pattern]
-target = "card.lua"
-pattern = '''if self.ability.name == 'Hack' and ('''
-position = "before"
-payload = '''
-if self.ability.name == 'Splash' and context.orig_unscoring then
-	local initial = false
-	if not context.blueprint then
-		-- check if self is the leftmost splash. the leftmost splash will be used to score the cards originally
-		-- don't do this for bloopies
-		for i = 1, #G.jokers.cards do
-			if G.jokers.cards[i].ability.name == 'Splash' and G.jokers.cards[i] ~= self then
-				break
-			elseif G.jokers.cards[i] == self then
-				initial = true
-				break
-			end
-		end
-	end
-	if not initial then
-		return {
-			message = localize('k_again_ex'),
-			repetitions = 1,
-			card = self
-		}
-	end
 end
 '''
 match_indent = true
