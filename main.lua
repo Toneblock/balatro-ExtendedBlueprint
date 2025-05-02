@@ -6,22 +6,12 @@
 --- MOD_DESCRIPTION: Increases blueprint compatibility
 --- BADGE_COLOUR: 4b68ce
 --- DEPENDENCIES: [Steamodded>=1.0.0~ALPHA-1216c]
---- VERSION: 0.3.2
+--- VERSION: 0.3.3
 
 ----------------------------------------------
 ------------MOD CODE -------------------------
 
 local exb = SMODS.current_mod
-
--- gotta go for smods to do four fingers/shortcut stuff
-
-SMODS.PokerHandPart:take_ownership('_straight', {
-	func = function(hand) return exb_get_straight(hand) end
-})
-SMODS.PokerHandPart:take_ownership('_flush', {
-	func = function(hand) return exb_get_flush(hand) end
-})
-
 
 function exb_parse()
 	if G.hand and G.STATE == G.STATES.SELECTING_HAND then

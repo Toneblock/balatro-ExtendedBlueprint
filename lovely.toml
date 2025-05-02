@@ -173,11 +173,9 @@ function Card:soft_add_to_deck()
 	end
 	]]
 	if self.ability.name == 'Chaos the Clown' then
-		-- G.GAME.total_freerolls = (G.GAME.total_freerolls and G.GAME.total_freerolls + 1) or 1
-		-- this is done in a subsequent lovely patch for some reason
+		G.GAME.round_resets.free_rerolls = G.GAME.round_resets.free_rerolls + 1
 		G.GAME.current_round.free_rerolls = G.GAME.current_round.free_rerolls + 1
 		calculate_reroll_cost(true)
-		-- sendDebugMessage(G.GAME.total_freerolls)
 	end
 	if self.ability.name == 'Turtle Bean' then
 		G.hand:change_size(self.ability.extra.h_size)
@@ -225,11 +223,9 @@ function Card:soft_remove_from_deck()
 		G.GAME.bankrupt_at = G.GAME.bankrupt_at + self.ability.extra
 	end
 	if self.ability.name == 'Chaos the Clown' then
-		-- G.GAME.total_freerolls = G.GAME.total_freerolls - 1
-		-- this is done in a subsequent lovely patch for some reason
+		G.GAME.round_resets.free_rerolls = G.GAME.round_resets.free_rerolls - 1
 		G.GAME.current_round.free_rerolls = G.GAME.current_round.free_rerolls - 1
 		calculate_reroll_cost(true)
-		-- sendDebugMessage(G.GAME.total_freerolls)
 	end
 	if self.ability.name == 'Turtle Bean' then
 		G.hand:change_size(-self.ability.extra.h_size)
@@ -642,6 +638,106 @@ pattern = '''table.sort(self.cards, function (a, b) return a.T.x + a.T.w/2 - 100
 position = "after"
 payload = '''
 end
+'''
+match_indent = true
+
+
+
+
+# patch SMODS for get_straight
+[[patches]]
+[patches.pattern]
+target = '''=[SMODS _ "src/overrides.lua"]'''
+pattern = '''local function next_ranks(key, start)'''
+position = "before"
+payload = '''
+local function iter_skip(key, _skip)
+	local _rank = SMODS.Ranks[key]
+	local _ret = {}
+        for _,v in ipairs(_rank.next) do
+		_ret[#_ret+1] = v
+		if _skip > 0 and (wrap or not SMODS.Ranks[v].straight_edge) then
+			local super_ret = iter_skip(v, _skip - 1)
+			for _, w in ipairs(super_ret) do
+				_ret[#_ret+1] = w
+			end
+		end
+        end
+	return _ret
+end 
+'''
+match_indent = true
+
+# implement iter_skip
+[[patches]]
+[patches.pattern]
+target = '''=[SMODS _ "src/overrides.lua"]'''
+pattern = '''if skip and (wrap or not SMODS.Ranks[v].straight_edge) then
+	for _,w in ipairs(SMODS.Ranks[v].next) do
+		ret[#ret+1] = w
+	end'''
+position = "at"
+payload = '''
+if skip > 0 and (wrap or not SMODS.Ranks[v].straight_edge) then
+	local super_ret = iter_skip(v, skip - 1)
+	for _, w in ipairs(super_ret) do
+		ret[#ret+1] = w
+	end
+'''
+match_indent = true
+
+# why? what???
+[[patches]]
+[patches.pattern]
+target = '''=[SMODS _ "src/overrides.lua"]'''
+pattern = '''if min_length < 2 then min_length = 2 end'''
+position = "at"
+payload = '''
+-- if min_length < 2 then min_length = 2 end
+'''
+match_indent = true
+
+# i could take ownership but whatever
+[[patches]]
+[patches.pattern]
+target = '''=[SMODS _ "src/game_object.lua"]'''
+pattern = '''func = function(hand) return get_straight(hand, next(SMODS.find_card('j_four_fingers')) and 4 or 5, not not next(SMODS.find_card('j_shortcut'))) end'''
+position = "at"
+payload = '''
+func = function(hand) return get_straight(hand, 5 - math.min(4, exb_amt("Four Fingers") or 0), math.min(4, exb_amt("Shortcut") or 0)) end
+'''
+match_indent = true
+
+# patch vanilla for get_flush
+[[patches]]
+[patches.pattern]
+target = "functions/misc_functions.lua"
+pattern = '''local four_fingers = next(find_joker('Four Fingers'))'''
+position = "at"
+payload = '''
+local four_fingers = math.min(4, exb_amt("Four Fingers") or 0)
+'''
+match_indent = true
+
+# 123
+[[patches]]
+[patches.pattern]
+target = "functions/misc_functions.lua"
+pattern = '''if #hand < (5 - (four_fingers and 1 or 0)) then return ret else'''
+position = "at"
+payload = '''
+if #hand < (5 - four_fingers) then return ret else
+'''
+match_indent = true
+
+# water is wet
+[[patches]]
+[patches.pattern]
+target = "functions/misc_functions.lua"
+pattern = '''if flush_count >= (5 - (four_fingers and 1 or 0)) then'''
+position = "at"
+payload = '''
+if flush_count >= (5 - four_fingers) then
 '''
 match_indent = true
 
