@@ -173,17 +173,10 @@ function Card:soft_add_to_deck()
 	end
 	]]
 	if self.ability.name == 'Chaos the Clown' then
-		G.GAME.round_resets.free_rerolls = G.GAME.round_resets.free_rerolls + 1
-		G.GAME.current_round.free_rerolls = G.GAME.current_round.free_rerolls + 1
-		calculate_reroll_cost(true)
+		SMODS.change_free_rerolls(1)
 	end
 	if self.ability.name == 'Turtle Bean' then
 		G.hand:change_size(self.ability.extra.h_size)
-	end
-	if self.ability.name == 'Oops! All 6s' then
-		for k, v in pairs(G.GAME.probabilities) do 
-			G.GAME.probabilities[k] = v*2
-		end
 	end
 	if self.ability.name == 'To the Moon' then
 		G.GAME.interest_amount = G.GAME.interest_amount + self.ability.extra
@@ -223,17 +216,10 @@ function Card:soft_remove_from_deck()
 		G.GAME.bankrupt_at = G.GAME.bankrupt_at + self.ability.extra
 	end
 	if self.ability.name == 'Chaos the Clown' then
-		G.GAME.round_resets.free_rerolls = G.GAME.round_resets.free_rerolls - 1
-		G.GAME.current_round.free_rerolls = G.GAME.current_round.free_rerolls - 1
-		calculate_reroll_cost(true)
+		SMODS.change_free_rerolls(-1)
 	end
 	if self.ability.name == 'Turtle Bean' then
 		G.hand:change_size(-self.ability.extra.h_size)
-	end
-	if self.ability.name == 'Oops! All 6s' then
-		for k, v in pairs(G.GAME.probabilities) do 
-			G.GAME.probabilities[k] = v/2
-		end
 	end
 	if self.ability.name == 'To the Moon' then
 		G.GAME.interest_amount = G.GAME.interest_amount - self.ability.extra
@@ -301,6 +287,17 @@ pattern = '''if G.GAME.current_round.free_rerolls < 0 then G.GAME.current_round.
 position = "at"
 payload = '''
 -- no
+'''
+match_indent = true
+
+# again!
+[[patches]]
+[patches.pattern]
+target = '''=[SMODS _ "src/utils.lua"]'''
+pattern = '''G.GAME.current_round.free_rerolls = math.max(G.GAME.current_round.free_rerolls + mod, 0)'''
+position = "at"
+payload = '''
+G.GAME.current_round.free_rerolls = G.GAME.current_round.free_rerolls + mod
 '''
 match_indent = true
 
@@ -697,49 +694,6 @@ payload = '''
 '''
 match_indent = true
 
-# i could take ownership but whatever
-[[patches]]
-[patches.pattern]
-target = '''=[SMODS _ "src/game_object.lua"]'''
-pattern = '''func = function(hand) return get_straight(hand, next(SMODS.find_card('j_four_fingers')) and 4 or 5, not not next(SMODS.find_card('j_shortcut'))) end'''
-position = "at"
-payload = '''
-func = function(hand) return get_straight(hand, 5 - math.min(4, exb_amt("Four Fingers") or 0), math.min(4, exb_amt("Shortcut") or 0)) end
-'''
-match_indent = true
-
-# patch vanilla for get_flush
-[[patches]]
-[patches.pattern]
-target = "functions/misc_functions.lua"
-pattern = '''local four_fingers = next(find_joker('Four Fingers'))'''
-position = "at"
-payload = '''
-local four_fingers = math.min(4, exb_amt("Four Fingers") or 0)
-'''
-match_indent = true
-
-# 123
-[[patches]]
-[patches.pattern]
-target = "functions/misc_functions.lua"
-pattern = '''if #hand < (5 - (four_fingers and 1 or 0)) then return ret else'''
-position = "at"
-payload = '''
-if #hand < (5 - four_fingers) then return ret else
-'''
-match_indent = true
-
-# water is wet
-[[patches]]
-[patches.pattern]
-target = "functions/misc_functions.lua"
-pattern = '''if flush_count >= (5 - (four_fingers and 1 or 0)) then'''
-position = "at"
-payload = '''
-if flush_count >= (5 - four_fingers) then
-'''
-match_indent = true
 
 
 
