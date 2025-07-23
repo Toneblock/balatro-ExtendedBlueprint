@@ -616,6 +616,20 @@ match_indent = true
 
 
 
+# oopsall6s compat
+[[patches]]
+[patches.pattern]
+target = "card.lua"
+pattern = '''elseif context.mod_probability and not context.blueprint and self.config.center_key == 'j_oops' then'''
+position = "at"
+payload = '''
+elseif context.mod_probability and self.config.center_key == 'j_oops' then
+'''
+match_indent = true
+
+
+
+
 # joker lock
 [[patches]]
 [patches.pattern]
