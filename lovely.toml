@@ -91,7 +91,6 @@ if G.jokers and fixingup then
 	
 	for i = 1, #G.jokers.cards do
 		if not G.jokers.cards[i].debuff then
-			local count = 0
 			local index = i
 			if G.jokers.cards[i].ability.name == 'Blueprint' then
 				index = i+1
@@ -101,7 +100,6 @@ if G.jokers and fixingup then
 			local change = i ~= index and index <= #G.jokers.cards
 			while change == true do
 				-- check indexes until it finds the end, or it finds itself
-				count = count + 1
 				change = false
 				if G.jokers.cards[index].ability.name == 'Blueprint' then
 					index = index+1
@@ -112,12 +110,11 @@ if G.jokers and fixingup then
 				end
 				if (i == index) or (index > #G.jokers.cards) 
 				or (G.jokers.cards[index].debuff) 
-				or (index == 1 and G.jokers.cards[1].ability.name == 'Brainstorm') 
-				or count > #G.jokers.cards then
+				or (index == 1 and G.jokers.cards[1].ability.name == 'Brainstorm') then 
 					break 
 				end
 			end
-			if (i ~= index) and (index <= #G.jokers.cards) and (not G.jokers.cards[index].debuff) and (count <= #G.jokers.cards) then
+			if i ~= index and index <= #G.jokers.cards and not G.jokers.cards[index].debuff then
 				table.insert(G.jokers.cards[index].dependent.new_cards, i)
 			end
 		end
@@ -176,17 +173,10 @@ function Card:soft_add_to_deck()
 	end
 	]]
 	if self.ability.name == 'Chaos the Clown' then
-		G.GAME.round_resets.free_rerolls = G.GAME.round_resets.free_rerolls + 1
-		G.GAME.current_round.free_rerolls = G.GAME.current_round.free_rerolls + 1
-		calculate_reroll_cost(true)
+		SMODS.change_free_rerolls(1)
 	end
 	if self.ability.name == 'Turtle Bean' then
 		G.hand:change_size(self.ability.extra.h_size)
-	end
-	if self.ability.name == 'Oops! All 6s' then
-		for k, v in pairs(G.GAME.probabilities) do 
-			G.GAME.probabilities[k] = v*2
-		end
 	end
 	if self.ability.name == 'To the Moon' then
 		G.GAME.interest_amount = G.GAME.interest_amount + self.ability.extra
@@ -226,17 +216,10 @@ function Card:soft_remove_from_deck()
 		G.GAME.bankrupt_at = G.GAME.bankrupt_at + self.ability.extra
 	end
 	if self.ability.name == 'Chaos the Clown' then
-		G.GAME.round_resets.free_rerolls = G.GAME.round_resets.free_rerolls - 1
-		G.GAME.current_round.free_rerolls = G.GAME.current_round.free_rerolls - 1
-		calculate_reroll_cost(true)
+		SMODS.change_free_rerolls(-1)
 	end
 	if self.ability.name == 'Turtle Bean' then
 		G.hand:change_size(-self.ability.extra.h_size)
-	end
-	if self.ability.name == 'Oops! All 6s' then
-		for k, v in pairs(G.GAME.probabilities) do 
-			G.GAME.probabilities[k] = v/2
-		end
 	end
 	if self.ability.name == 'To the Moon' then
 		G.GAME.interest_amount = G.GAME.interest_amount - self.ability.extra
@@ -296,6 +279,7 @@ match_indent = true
 
 
 # bad
+# yes this causes a vanilla change where rebuying chaos in the same shop no longer gives a free reroll, but this needs to be consistent
 [[patches]]
 [patches.pattern]
 target = "functions/common_events.lua"
@@ -303,6 +287,50 @@ pattern = '''if G.GAME.current_round.free_rerolls < 0 then G.GAME.current_round.
 position = "at"
 payload = '''
 -- no
+'''
+match_indent = true
+
+# again!
+[[patches]]
+[patches.pattern]
+target = '''=[SMODS _ "src/utils.lua"]'''
+pattern = '''G.GAME.current_round.free_rerolls = math.max(G.GAME.current_round.free_rerolls + mod, 0)'''
+position = "at"
+payload = '''
+G.GAME.current_round.free_rerolls = G.GAME.current_round.free_rerolls + mod
+'''
+match_indent = true
+
+# rewriting chaos a little
+[[patches]]
+[patches.pattern]
+target = "functions/state_events.lua"
+pattern = '''G.GAME.current_round.free_rerolls = #chaos'''
+position = "at"
+payload = '''
+G.GAME.current_round.free_rerolls = G.GAME.total_freerolls or 0
+'''
+match_indent = true
+
+# inject
+[[patches]]
+[patches.pattern]
+target = "card.lua"
+pattern = '''G.GAME.current_round.free_rerolls = G.GAME.current_round.free_rerolls + 1'''
+position = "after"
+payload = '''
+G.GAME.total_freerolls = (G.GAME.total_freerolls and G.GAME.total_freerolls + 1) or 1
+'''
+match_indent = true
+
+# now for removal
+[[patches]]
+[patches.pattern]
+target = "card.lua"
+pattern = '''G.GAME.current_round.free_rerolls = G.GAME.current_round.free_rerolls - 1'''
+position = "after"
+payload = '''
+G.GAME.total_freerolls = G.GAME.total_freerolls - 1
 '''
 match_indent = true
 
@@ -369,32 +397,12 @@ match_indent = true
 [[patches]]
 [patches.pattern]
 target = "card.lua"
-pattern = '''
-SMODS.scale_card(self, {
-	ref_table = self.ability,
-	ref_value = "extra_value",
-	scalar_value = "extra",
-	scaling_message = {
-		message = localize('k_val_up'),
-		colour = G.C.MONEY
-	}
-})
-self:set_cost()
-'''
+pattern = '''self.ability.extra_value = self.ability.extra_value + self.ability.extra'''
 position = "at"
 payload = '''
-local _card = context.blueprint_card or self
-SMODS.scale_card(_card, {
-	ref_table = _card.ability,
-	ref_value = "extra_value",
-	scalar_table = self.ability,
-	scalar_value = "extra",
-	scaling_message = {
-		message = localize('k_val_up'),
-		colour = G.C.MONEY
-	}
-})
-_card:set_cost()
+local ccard = context.blueprint_card or self
+ccard.ability.extra_value = ccard.ability.extra_value + self.ability.extra
+ccard:set_cost()
 '''
 match_indent = true
 
@@ -602,6 +610,20 @@ if self.base and self.base.id and not (self.ability and self.ability.perma_debuf
 		end
 	end
 end
+'''
+match_indent = true
+
+
+
+
+# oopsall6s compat
+[[patches]]
+[patches.pattern]
+target = "card.lua"
+pattern = '''elseif context.mod_probability and not context.blueprint and self.config.center_key == 'j_oops' then'''
+position = "at"
+payload = '''
+elseif context.mod_probability and self.config.center_key == 'j_oops' then
 '''
 match_indent = true
 
