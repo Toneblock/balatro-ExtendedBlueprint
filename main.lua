@@ -5,9 +5,9 @@
 --- MOD_AUTHOR: [toneblock]
 --- MOD_DESCRIPTION: Increases blueprint compatibility
 --- BADGE_COLOUR: 4b68ce
---- DEPENDENCIES: [Steamodded>=1.0.0~ALPHA-1216c]
---- VERSION: 0.3.3
---- PRIORITY: -100
+--- DEPENDENCIES: [Steamodded>=1.0.0~BETA-1016c]
+--- PRIORITY: -1000
+--- VERSION: 0.3.4
 
 ----------------------------------------------
 ------------MOD CODE -------------------------
@@ -20,13 +20,13 @@ function exb_parse()
 	end
 end
 
--- we are overriding smods functions so priority should be low
-function SMODS.four_fingers()
-	return math.max(5 - exb_amt("Four Fingers"), 0)
+-- override func
+function SMODS.four_fingers(hand_type)
+	return 5 - (exb_amt("Four Fingers") or 0)
 end
 
 function SMODS.shortcut()
-	return exb_amt("Shortcut")
+	return exb_amt("Shortcut") or 0
 end
 
 -- we hookin
@@ -51,10 +51,8 @@ end
 
 -- i like coding because you can put your spaghetti in a function and suddenly it's clean code
 function exb_amt(_name, amt)
-	if not G.GAME.exb then G.GAME.exb = {} end
-	if not G.GAME.exb[_name] then G.GAME.exb[_name] = 0 end
-	if amt and G.GAME.exb[_name] >= amt then return true end
-	if not amt then return G.GAME.exb[_name] end
+	if amt and (G.GAME.exb and G.GAME.exb[_name]) and G.GAME.exb[_name] >= amt then return true end
+	if not amt and (G.GAME.exb and G.GAME.exb[_name]) then return G.GAME.exb[_name] end
 end
 
 function exb_truefacecheck(_card)
