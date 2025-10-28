@@ -91,6 +91,7 @@ if G.jokers and fixingup then
 	
 	for i = 1, #G.jokers.cards do
 		if not G.jokers.cards[i].debuff then
+			local count = 0
 			local index = i
 			if G.jokers.cards[i].ability.name == 'Blueprint' then
 				index = i+1
@@ -100,6 +101,7 @@ if G.jokers and fixingup then
 			local change = i ~= index and index <= #G.jokers.cards
 			while change == true do
 				-- check indexes until it finds the end, or it finds itself
+				count = count + 1
 				change = false
 				if G.jokers.cards[index].ability.name == 'Blueprint' then
 					index = index+1
@@ -110,11 +112,12 @@ if G.jokers and fixingup then
 				end
 				if (i == index) or (index > #G.jokers.cards) 
 				or (G.jokers.cards[index].debuff) 
-				or (index == 1 and G.jokers.cards[1].ability.name == 'Brainstorm') then 
+				or (index == 1 and G.jokers.cards[1].ability.name == 'Brainstorm') 
+				or count > #G.jokers.cards then
 					break 
 				end
 			end
-			if i ~= index and index <= #G.jokers.cards and not G.jokers.cards[index].debuff then
+			if (i ~= index) and (index <= #G.jokers.cards) and (not G.jokers.cards[index].debuff) and (count <= #G.jokers.cards) then
 				table.insert(G.jokers.cards[index].dependent.new_cards, i)
 			end
 		end
