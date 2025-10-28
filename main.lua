@@ -5,9 +5,9 @@
 --- MOD_AUTHOR: [toneblock]
 --- MOD_DESCRIPTION: Increases blueprint compatibility
 --- BADGE_COLOUR: 4b68ce
---- DEPENDENCIES: [Steamodded>=1.0.0~ALPHA-1216c]
---- VERSION: 0.3.3
---- PRIORITY: -100
+--- DEPENDENCIES: [Steamodded>=1.0.0~BETA-1016c]
+--- VERSION: 0.3.4
+--- PRIORITY: -1000
 
 ----------------------------------------------
 ------------MOD CODE -------------------------
